@@ -1,0 +1,446 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					   xmlns:s="library://ns.adobe.com/flex/spark" 
+					   xmlns:mx="library://ns.adobe.com/flex/mx"
+					   width="700" height="700"
+					   enabled="true"
+					   chromeColor="0x325d9a"
+					   showStatusBar="false"
+					   creationComplete="init()"
+					   windowComplete="maximize()"
+					   backgroundColor="0xf4f4f4">	
+	<fx:Script>
+		<![CDATA[
+			import components.MyWindow;
+			import components.pictureWindow;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.CloseEvent;
+			import mx.events.FlexEvent;
+			
+			import spark.events.IndexChangeEvent;
+			import spark.events.TextOperationEvent;
+			public static const CLIENT_ID:String = "499494750109487";
+			public static const CLIENT_SECRET:String = "oxZrp-hx3hA2f7kTDvMkNUtX";
+			public static const REDIRECT_URI:String = "https://www.facebook.com/connect/login_success.html";
+			
+			private var urlLoader:URLLoader;
+			
+			public static var accessToken:String = "";
+			public static var userId:String ="";
+			public static var userName:String = "";
+			private var myWindow:MyWindow;
+			private var count:Number = 0;
+			
+			public static var viewFB:Boolean = false;
+			
+			[Bindable] private var friendList:ArrayCollection = null;
+			[Bindable] private var fbSearch:ArrayCollection = null;
+			[Bindable] private var homeFeed:ArrayCollection = null;
+			
+			private var timer:Timer;
+			
+			private function init():void {
+				
+				var rootMenu:NativeMenu = new NativeMenu();
+				
+				var fileSubMenu:NativeMenu = new NativeMenu();
+				
+				var closeSubMenuItem:NativeMenuItem = new NativeMenuItem("Close");
+				closeSubMenuItem.keyEquivalent = "q";
+				closeSubMenuItem.keyEquivalentModifiers = [Keyboard.CONTROL];
+				
+				fileSubMenu.addItem(new NativeMenuItem("Login"));
+				fileSubMenu.addItem(new NativeMenuItem("Logout"));
+				fileSubMenu.addItem(new NativeMenuItem("", true));
+				fileSubMenu.addItem(closeSubMenuItem);
+				
+				
+				var fileMenu:NativeMenuItem = new NativeMenuItem("File");
+				fileMenu.submenu = fileSubMenu;
+				
+				rootMenu.addItem(fileMenu);				
+				
+				var viewSubMenu:NativeMenu = new NativeMenu();
+				
+				var fbSearchSubMenuItem:NativeMenuItem = new NativeMenuItem("FBSearch");
+				fbSearchSubMenuItem.keyEquivalent = "f";
+				fbSearchSubMenuItem.keyEquivalentModifiers = [Keyboard.CONTROL];
+				
+				viewSubMenu.addItem(fbSearchSubMenuItem);
+				
+				var viewMenu:NativeMenuItem = new NativeMenuItem("View");
+				viewMenu.submenu = viewSubMenu;
+				rootMenu.addItem(viewMenu);
+				
+				// Mac:
+				NativeApplication.nativeApplication.menu = rootMenu;
+				
+				// PC:
+				nativeWindow.menu = rootMenu;
+				
+				
+				//menuButton.contextMenu = rootMenu;
+				
+				rootMenu.addEventListener(Event.SELECT, onMenuItemSelected);
+				login();
+			}
+			
+			private function onMenuItemSelected(event:Event):void {
+				
+				if (event.target is NativeMenuItem) {
+					var menu:NativeMenuItem = event.target as NativeMenuItem;
+					
+					switch (menu.label) {
+						case "Login":login();break;
+						case "Logout": logout();break;
+						case "Close":close();break;
+						case "FBSearch": showFBSearch();break;
+					}	
+				}	
+			}
+			
+			
+			private function showFBSearch():void{
+				viewFB = !viewFB;
+				if(viewFB){
+					searchView.height = wallList.height/2;
+				}else{
+					searchView.height = 0;
+				}
+			}
+			
+			protected function login():void
+			{
+				myWindow = new MyWindow();
+				myWindow.mainWindow = this;
+				//myWindow.visible = false;
+				myWindow.addEventListener(Event.CLOSE, getAccessToken);
+				myWindow.open();
+			}
+			
+			private function getAccessToken(event:Event):void{
+				if(accessToken.search("denied") == -1){
+					accessToken = myWindow.accessToken.substring(myWindow.accessToken.search("=") + 1, myWindow.accessToken.search("&"));
+					if(accessToken.length > 0){
+						this.enabled = true;
+						urlLoader = new URLLoader();
+						
+						var urlVariables:URLVariables = new URLVariables();
+						urlVariables.access_token = accessToken;
+						urlVariables.fields = "name,picture";
+						urlLoader.addEventListener(Event.COMPLETE, displayUserProfile);
+						// Request
+						var urlRequest:URLRequest = new URLRequest("https://graph.facebook.com/me");
+						urlRequest.data = urlVariables;
+						urlLoader.load(urlRequest);
+					}
+				}else{
+					Alert.show("Sorry, but if you don't log in and give the permissions, " +
+						       "this app won't do much..." +
+						       "\n    Would you like to log in?", 
+						       "Login Required", Alert.YES|Alert.NO, null, relogin);
+					//Alert.
+				}
+			}
+			
+			private function relogin(event:CloseEvent):void{
+				if(event.detail == Alert.YES){
+					login();
+				}
+			}
+	
+			
+			private function logout():void{
+				if(accessToken){
+					urlLoader = new URLLoader();
+					
+					var urlVariables:URLVariables = new URLVariables();
+					//urlVariables.access_token = accessToken;
+					urlVariables.confirm = "1";
+					urlVariables.next = "http://www.google.com";
+					//urlLoader.removeEventListener(Event.COMPLETE, displayUserProfile);
+					urlLoader.addEventListener(Event.COMPLETE, logedOut);
+					// Request
+					var urlRequest:URLRequest = new URLRequest("http://www.facebook.com/logout.php?");
+					urlRequest.data = urlVariables;
+					urlLoader.load(urlRequest);
+				}
+			}
+			
+			private function logedOut(event:Event):void{
+				login();
+			}
+			
+			private function displayUserProfile(event:Event):void{
+				//profile.appendText(urlLoader.data.toString());
+				
+				var jsonResult:Object = JSON.parse(urlLoader.data.toString());
+				if (!responseContainsError(jsonResult)) {
+					// Populate the collection
+					profile.text = jsonResult.name;
+					userName = jsonResult.name;
+					userId = jsonResult.id;
+					profileImage.source = jsonResult.picture.data.url;
+				}
+				
+				urlLoader = new URLLoader();
+				
+				var urlVariables:URLVariables = new URLVariables();
+				urlVariables.access_token = accessToken;
+				urlLoader.removeEventListener(Event.COMPLETE, displayUserProfile);
+				urlLoader.addEventListener(Event.COMPLETE, createFriendList);
+				// Request
+				var urlRequest:URLRequest = new URLRequest("https://graph.facebook.com/me/friends");
+				urlRequest.data = urlVariables;
+				urlLoader.load(urlRequest);
+			}
+			
+			private function createFriendList(event:Event):void{
+				var jsonResult:Object = JSON.parse(urlLoader.data.toString());
+				if (!responseContainsError(jsonResult)) {
+					// Populate the collection
+					friendList = new ArrayCollection(jsonResult.data);
+				}
+				loadingMessages();
+			}
+			
+			private function reloadFeed(event:TimerEvent):void{
+				loadingMessages2();
+			}
+			
+			private function loadingMessages():void{
+				urlLoader = new URLLoader();
+				
+				var urlVariables:URLVariables = new URLVariables();
+				urlVariables.access_token = accessToken;
+				//urlVariables.q = "facebook";
+				
+				urlLoader.removeEventListener(Event.COMPLETE, createFriendList);
+				urlLoader.addEventListener(Event.COMPLETE, loadMessages);
+				// Request
+				var urlRequest:URLRequest = new URLRequest("https://graph.facebook.com/me/home");
+				urlRequest.data = urlVariables;
+				urlLoader.load(urlRequest);
+			}
+			
+			private function loadingMessages2():void{
+				urlLoader = new URLLoader();
+				
+				var urlVariables:URLVariables = new URLVariables();
+				urlVariables.access_token = accessToken;
+				//urlVariables.q = "facebook";
+				// Request
+				urlLoader.addEventListener(Event.COMPLETE, loadMessages);
+				var urlRequest:URLRequest = new URLRequest("https://graph.facebook.com/me/home");
+				urlRequest.data = urlVariables;
+				urlLoader.load(urlRequest);
+			}
+			
+			private function loadMessages(event:Event):void{
+				var jsonResult:Object = JSON.parse(urlLoader.data.toString());
+					// Populate the collection
+					//friendList = new ArrayCollection(jsonResult.data);
+					
+					//try{
+				homeFeed = new ArrayCollection();
+				if (!responseContainsError(jsonResult)) {
+					for(var i:int = 0; i < jsonResult.data.length; i++){ 
+						var jsonObject:Object = jsonResult.data[i];
+						var itemObject:Object = new Object();
+					
+						itemObject = jsonObject;
+						
+						//output.appendText(jsonObject.toString() + "\n");
+						if (jsonObject.message){
+							itemObject.messageSource = jsonObject.message;
+						}else if (jsonObject.story) {
+							itemObject.messageSource = jsonObject.story;
+						}
+						
+						homeFeed.addItem(itemObject);
+					}
+					//output.appendText(urlLoader.data.toString());
+				}
+				//timer = new Timer(1000 , 1);
+				//timer.addEventListener(TimerEvent.TIMER, reloadFeed);
+				//timer.start();
+					//}//catch(error:Error){
+						//output.appendText("Error" + error.errorID + "|" + error.message + "\n");
+				//}
+			}
+			
+			protected function formatComboBox(friend:Object):String
+			{
+				if(friend.name)
+					return friend.name;
+				return "";
+			}
+			
+			
+			
+			protected function searchWeb(event:Event):void
+			{
+				var searchString:String = searchBar.text;
+				if(searchString.search("\\.") == -1 && searchString.substring(0, 2) != "g:" && !googleCheck.selected){
+					urlLoader = new URLLoader();
+					
+					var urlVariables:URLVariables = new URLVariables();
+					urlVariables.access_token = accessToken;
+					urlVariables.q = searchString;
+					urlVariables.type="user";
+					urlLoader.addEventListener(Event.COMPLETE, fbSearchResults);
+					// Request
+					var urlRequest:URLRequest = new URLRequest("https://graph.facebook.com/search");
+					urlRequest.data = urlVariables;
+					urlLoader.load(urlRequest);
+				}else if(searchString.substring(0, 2) == "g:" || googleCheck.selected){
+					searchGoogle(searchString);
+				}else{
+					var search:String = "";
+					if(searchString.search("http://") == -1){
+						search = "http://";
+					}
+					if(searchString.search("www.") == -1){
+						search += "www.";
+					}
+					urlRequest = new URLRequest(search + searchString);
+					html.location = urlRequest.url;
+				}
+			}
+			
+			private function fbSearchResults(event:Event):void{
+				var jsonResult:Object = JSON.parse(urlLoader.data.toString());
+				if (!responseContainsError(jsonResult)) {
+					// Populate the collection
+					fbSearch = new ArrayCollection(jsonResult.data);
+					//output.text = urlLoader.data.toString();
+					urlLoader.removeEventListener(Event.COMPLETE, fbSearchResults);
+					searchView.height = wallList.height/2;
+					viewFB = true;
+				}
+			}
+			
+			private function searchGoogle(searchString:String):void{
+				if(searchString.substring(0, 2) == "g:"){
+					searchString = searchString.substring(2);
+				}
+				//output.text = searchString;
+				var urlRequest:URLRequest = new URLRequest("https://www.google.com/search");
+				var urlVariables:URLVariables = new URLVariables();
+				//urlVariables.lr = "en"
+				urlVariables.q = searchString;
+				
+				var targetURL:String = urlRequest.url + "?" + urlVariables.toString();
+				html.location = targetURL;
+			}
+			
+			private function responseContainsError(jsonResult:Object):Boolean {
+				var errorDetected:Boolean = false;
+				// If there is an error object
+				if (jsonResult.error) {
+					errorDetected = true;
+					// Alert user based on the error
+					if (jsonResult.error.message) {
+						var alertText:String = "";
+						// Find location of first error
+						if (jsonResult.error.errors) {
+							var firstError:Object = jsonResult.error.errors[0];
+							alertText = firstError.location + " Error:" + "\n";
+						}
+						// Add the error message
+						var errorMessage:String = jsonResult.error.message;
+						alertText = alertText + errorMessage;
+						// Add specific text based on type
+						switch (jsonResult.error.code) {
+							case "401":
+							default:
+								alertText = alertText + "\n\n" + "Please Login Again";
+								break;
+						}
+						// Alert the user
+						Alert.show(alertText, "Error");
+					}
+				}
+				return errorDetected;
+			}	
+			
+			protected function openWindow(event:IndexChangeEvent):void
+			{
+				//loadingMessages2();
+				var picWindow:pictureWindow= new pictureWindow();
+				
+				var data:Object = homeFeed.getItemAt(event.newIndex)
+				
+				picWindow.item = data;
+				picWindow.main = this;
+				
+				picWindow.open();
+			}
+			
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<s:VGroup width="100%" height="100%">
+		<s:BorderContainer borderVisible="false" width="100%" height="40" backgroundColor="0x325d9a" horizontalCenter="0">
+			<s:HGroup width="100%" height="100%" horizontalAlign="center" verticalAlign="middle">
+				<s:Spacer width="10"/>
+				<s:Label text="TalkFest" color="0xFFFFFF" fontSize="22" fontWeight="bold" />
+				<s:Spacer width="25%"/>
+				<s:Label text="Search:" color="0xFFFFFF" fontSize="20" fontWeight="bold"/>
+				<s:TextInput id="searchBar" width="500" height="30" fontSize="14" enter="searchWeb(event)"/>
+				<s:CheckBox id="googleCheck" label="Google Search" color="0xFFFFFF" fontSize="14" fontWeight="bold"/>
+				<s:Spacer width="25%"/>
+			</s:HGroup>
+		</s:BorderContainer>
+		<s:HGroup width="100%" height="100%">	
+			<s:VGroup width="100%" height="100%" paddingLeft="10" paddingBottom="10">
+				<!--<s:TextArea id="output" width="100%" height="100"/>-->
+				<s:BorderContainer borderStyle="solid" borderColor="#888888" borderWeight="5"
+								   width="100%" height="100%">
+					<mx:HTML id="html"
+							 verticalScrollPolicy="off" horizontalScrollPolicy="auto"
+							 width="100%" height="100%"/>
+				</s:BorderContainer>
+				
+			</s:VGroup>
+			<s:VGroup height="100%" paddingRight="10" paddingBottom="10">
+				<s:HGroup verticalAlign="middle" width="100%">
+					<s:Image id="profileImage"/>
+					<s:Label id="profile" width="139"/>
+				</s:HGroup>
+				<s:HGroup verticalAlign="middle">
+					<s:Label text="Friends:"/>
+					<s:ComboBox id="friendlistBox" 
+								dataProvider="{friendList}" itemRenderer="Renderers.friendlistRenderer"
+								width = "100%" labelFunction="{formatComboBox}"
+								borderVisible="false" chromeColor="#ECF6FF" contentBackgroundColor="#FFFFFF" 
+								dropShadowVisible="true" focusColor="#E0E1E1" rollOverColor="#66ACE1"/>
+				</s:HGroup>
+				<s:TextArea id="postMessage" width="100%" height="50"/>
+				<s:Button id="postButton" width="50" label="Post" chromeColor="#FEFEFE"/>
+				<s:HGroup verticalAlign="middle">
+					<s:Label text="Your Wall"/>
+					<s:Button label="Update" click="loadingMessages2()"/>
+				</s:HGroup>
+				<s:List id="wallList" width="100%" height="100%" 
+						dataProvider="{homeFeed}" itemRenderer="Renderers.WallRenderer"
+						change="openWindow(event)"/>
+				<s:VGroup id="searchView" width="100%" height="0">
+					<s:Label text="FaceBook Search:"/>
+					<s:List id="SearchFB" width="100%" height="100%"
+							dataProvider="{fbSearch}" itemRenderer="Renderers.friendlistRenderer"/>
+				</s:VGroup>
+					
+			</s:VGroup>
+			<!--<s:TextArea id="output" width="400" height="400"/>-->
+		</s:HGroup>
+	</s:VGroup>
+
+	
+</s:WindowedApplication>

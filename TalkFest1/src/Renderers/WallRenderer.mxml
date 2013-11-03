@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:ItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				xmlns:s="library://ns.adobe.com/flex/spark" 
+				xmlns:mx="library://ns.adobe.com/flex/mx" 
+				autoDrawBackground="true"
+				creationComplete="init()">
+	
+	<fx:Script>
+		<![CDATA[
+			import components.pictureWindow;
+			
+			import mx.events.FlexEvent;
+			
+			protected function init():void
+			{
+				addEventListener(MouseEvent.MOUSE_OVER, expand);
+				addEventListener(MouseEvent.MOUSE_OUT, collapse);
+			}
+			
+			protected function expand(event:MouseEvent):void{
+				message.height= message.percentHeight;
+				
+				photo.visible = true;
+				photo.height = photo.percentHeight;
+				photo.width = photo.percentWidth;
+			}
+			
+			protected function collapse(event:MouseEvent):void{
+				message.height=30;
+				photo.visible = false;
+				photo.width=0;
+				photo.height=0;
+			}
+			
+			protected function popup(event:MouseEvent):void
+			{
+				var picWindow:pictureWindow = new pictureWindow();
+				
+				if(data.source){
+					picWindow.video = data.source;
+				}else if(data.picture){
+					picWindow.img = data.picture;
+				}
+				
+				picWindow.item = data;
+				
+				picWindow.open();
+			}
+			
+		]]>
+	</fx:Script>
+	<s:Image width="50" height="50" source="http://graph.facebook.com/{data.from.id}/picture?" />
+	<s:Label fontSize="12" fontWeight="bold" text="{data.from.name}" x="55" y="5"/>
+
+	<s:VGroup x="50" y="17" horizontalAlign="center" verticalAlign="middle">
+		<s:TextArea id="message" height="30"  minHeight="30"
+					contentBackgroundAlpha="0" editable="false" text="{data.messageSource}"
+					heightInLines="0" paddingBottom="5" borderVisible="false"/>
+		<s:Image id="photo" source="{data.picture}" visible="false" height="0" width="0"/>
+		
+		<s:Spacer height="10"/>
+		
+	</s:VGroup>
+</s:ItemRenderer>

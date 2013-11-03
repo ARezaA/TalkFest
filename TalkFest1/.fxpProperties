@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<fxpProperties abbreviated="false" authoringTool="Flex Builder" compiles="true" parentProject="a06fe316-3089-43a9-9387-e51e6b6dce13" projectUUID="a06fe316-3089-43a9-9387-e51e6b6dce13" pureCatalystProject="false" sdkVersion="4.6.0" uuid="8ee2f0b2-57d5-438a-878f-d09a1bd37120" version="15">
+  <projects/>
+  <src/>
+  <swc>
+    <linked location="sdkPlaceHolder" path="sdkPlaceHolder" position="0" uuid="8ee2f0b2-57d5-438a-878f-d09a1bd37120"/>
+    <linked location="C:/Users/Reza/Desktop/School/TalkFest1/libs" path="/libs" position="1" uuid="8ee2f0b2-57d5-438a-878f-d09a1bd37120"/>
+  </swc>
+  <misc/>
+  <theme/>
+  <mxmlFormattingPrefs groupAttributesByState="true" maxLineWidth="100" mxmlAlignAttributes="true" mxmlAttributeOrder="id,userLabel,includeIn,excludeFrom,visible,x,y,z,left,right,top,bottom,width,height,minWidth,minHeight,maxWidth,maxHeight,label" mxmlKeepAttributeValuesOrganized="true"/>
+</fxpProperties>

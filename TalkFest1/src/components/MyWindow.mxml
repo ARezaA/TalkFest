@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" 
+		  width="1000" height="430"
+		  systemChrome="none"
+		  showStatusBar="false"
+		  alwaysInFront="true"
+		  creationComplete="init()">
+	<fx:Script>
+		<![CDATA[
+			import mx.events.FlexEvent;
+			
+			private var urlLoader:URLLoader;
+			public var mainWindow:Talkfest1; 
+			
+			public var accessToken:String;
+			
+			protected function init():void
+			{
+				nativeWindow.x = (Screen.mainScreen.bounds.width - width)/2;
+				nativeWindow.y = (Screen.mainScreen.bounds.height - height)/2;
+				
+				urlLoader = new URLLoader();
+				
+				//Used to see what was inside the URL since facebook passes access tokens through there
+				//html.addEventListener(Event.LOCATION_CHANGE, hello);
+				
+				//parses the url when the user has successfully logged in
+				html.addEventListener(Event.LOCATION_CHANGE, getAccessToken);
+				
+				var urlRequest:URLRequest = new URLRequest("https://www.facebook.com/dialog/oauth");
+				// Authentication logic parameters
+				var urlVariables:URLVariables = new URLVariables();
+				urlVariables.response_type = "token";
+				urlVariables.client_id = Talkfest1.CLIENT_ID;
+				urlVariables.redirect_uri = Talkfest1.REDIRECT_URI;
+				urlVariables.scope = "publish_actions,read_mailbox,read_stream,publish_stream";
+				
+				var targetURL:String = urlRequest.url + "?" + urlVariables.toString();
+				html.location = targetURL;
+			}
+			
+			private function getAccessToken(event:Event):void{
+				Talkfest1.accessToken = html.location;
+				if(html.location.search("access_token=") != -1){
+					accessToken = html.location;
+					close();
+				}else if(html.location.search("access_denied") != -1){
+					accessToken = "denied";
+					close();
+				}
+				/*output.appendText(html.location);
+				output.appendText("\n");
+				*/
+			}
+			
+			
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<s:VGroup width="100%" height="100%">
+		<!--<s:TextArea id="output" width="100%" height="100"/>-->
+		<s:BorderContainer borderStyle="solid" borderColor="#888888" borderWeight="5"
+						   width="100%" height="100%">
+			
+			<mx:HTML id="html"
+					 verticalScrollPolicy="off" horizontalScrollPolicy="auto"
+					 width="100%" height="100%"/>
+			
+		</s:BorderContainer>
+		
+	</s:VGroup>
+	
+</s:Window>
